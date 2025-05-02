@@ -40,7 +40,7 @@ mkLink :: Text -> P.Inlines
 mkLink path =
     let noSuffix = (\s -> fromMaybe s $ stripSuffix ".org" s) path
      in P.link
-            ((<> "/") noSuffix)
+            (toLower $ (<> "/") noSuffix)
             noSuffix
             (P.text noSuffix)
 
