@@ -5,7 +5,7 @@ module Main where
 import Control.Monad ((<=<))
 import Data.Text hiding (length, take)
 import Data.Text.IO qualified as TIO
-import Pandoc (mkIndex, toPandoc)
+import Pandoc (mkIndex, toPandoc, toPandocDetailed)
 import Parser (chapterP)
 import System.Environment (getArgs)
 import Text.Megaparsec (parse)
@@ -50,11 +50,15 @@ convert :: Maybe (Template Text) -> FilePath -> IO String
 convert template file = do
     text <- TIO.readFile file
     let outputPath = take (length file - 6) file <> ext
+    let outputPathDetailed = take (length file - 7) file <> "-detailed." <> ext
     case parse chapterP file text of
         Left output -> print (errorBundlePretty output) >> print ("Couldn't parse input file " <> file)
-        Right x ->
+        Right x -> do
             runIO (func (options template) $ toPandoc x)
                 >>= handleError
                 >>= TIO.writeFile outputPath . addHeader
+            runIO (func (options template) $ toPandocDetailed x)
+                >>= handleError
+                >>= TIO.writeFile outputPathDetailed . addHeader
     print $ "Completed: " <> file
     return outputPath

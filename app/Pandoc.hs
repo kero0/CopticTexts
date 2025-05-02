@@ -4,9 +4,23 @@ module Pandoc where
 
 import Data.List (sort, stripPrefix)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, pack, splitOn, stripSuffix, toLower)
+import Data.Text (Text, pack, replace, stripSuffix, toLower)
 import Parser hiding (words)
 import Text.Pandoc.Builder qualified as P
+
+toPandocDetailed :: Chapter -> P.Pandoc
+toPandocDetailed (Chapter (Header bookname _ chapternumber) verses) =
+    P.setTitle
+        ( P.text
+            ( bookname
+                <> " Chapter "
+                <> tshow chapternumber
+            )
+        )
+        $ P.doc
+        $ flatten
+        $ P.fromList
+        $ map verseToBlockDetailed verses
 
 toPandoc :: Chapter -> P.Pandoc
 toPandoc (Chapter (Header bookname _ chapternumber) verses) =
@@ -27,7 +41,7 @@ mkIndex parent files =
     P.setTitle "Index" $
         P.doc $
             P.bulletList $
-                map (P.plain . mkLink . pack . mStripPrefix parent) $
+                map (P.bulletList . fmap P.plain . mkLink . pack . mStripPrefix parent) $
                     sort files
 
 mStripPrefix :: [Char] -> [Char] -> [Char]
@@ -36,28 +50,35 @@ mStripPrefix parent f = maybe f stripLeadingSlash $ stripPrefix parent f
     stripLeadingSlash ('/' : xs) = stripLeadingSlash xs
     stripLeadingSlash xs = xs
 
-mkLink :: Text -> P.Inlines
+mkLink :: Text -> [P.Inlines]
 mkLink path =
     let noSuffix = (\s -> fromMaybe s $ stripSuffix ".org" s) path
-     in P.link
+        readable = replace "/" " ⟶ " noSuffix
+     in [ P.text readable
+        , P.link
             (toLower $ (<> "/") noSuffix)
             noSuffix
-            (P.text noSuffix)
-
-baseName :: Text -> Text
-baseName =
-    toLower
-        . last
-        . splitOn "/"
+            (P.text readable)
+        , P.link
+            (toLower $ (<> "-detailed/") noSuffix)
+            noSuffix
+            (P.text $ "Detailed: " <> readable)
+        ]
 
 verseToBlock :: Verse -> P.Blocks
-verseToBlock (Verse (VerseReference _ versenumber) text_en text words') =
+verseToBlock (Verse (VerseReference _ versenumber) text_en text _) =
+    P.header 1 (P.text (tshow versenumber) <> " " <> P.text text)
+        <> P.para (P.text text_en)
+
+verseToBlockDetailed :: Verse -> P.Blocks
+verseToBlockDetailed (Verse (VerseReference _ versenumber) text_en text words') =
     P.header 1 (P.text (tshow versenumber) <> " " <> P.text text)
         <> P.para (P.text text_en)
         <> flatten
             ( P.fromList $
                 map (wordToBlock 2) words'
             )
+
 wordToBlock :: Int -> Parser.Word -> P.Blocks
 wordToBlock depth (Parser.WordRange rangeStart rangeEnd form misc subwords) =
     P.header depth (P.text $ tshow rangeStart <> "-" <> tshow rangeEnd <> " " <> form)
