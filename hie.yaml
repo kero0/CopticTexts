@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+    - path: "app/Main.hs"
+      component: "coptic-conllu-parser:exe:coptic-conllu-parser"
