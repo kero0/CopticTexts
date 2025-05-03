@@ -43,9 +43,13 @@
                 haskell-language-server
               ]
               ++ (with pkgs; [
+                hugo
                 pkg-config
                 zlib
               ]);
+          };
+          hugo = pkgs.mkShell {
+            packages = with pkgs; [ hugo ];
           };
         }
       );
