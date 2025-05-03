@@ -27,7 +27,7 @@ main =
 
 handleDir :: FilePath -> [FilePath] -> IO ()
 handleDir parent files = do
-    template <- (fmap (\(Right x) -> Just x) . compileTemplate "" <=< handleError <=< runIO) $ getDefaultTemplate (pack ext)
+    template <- pure . either (const Nothing) Just <=< (compileTemplate "" <=< handleError <=< runIO) $ getDefaultTemplate (pack ext)
     outputs <- pooledMapConcurrently (convert template) files
     runIO (func ((\x -> x{writerTableOfContents = False}) (options template)) $ mkIndex parent outputs)
         >>= handleError
